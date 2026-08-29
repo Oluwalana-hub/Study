@@ -1,4 +1,4 @@
-// Prisma Schema for StudyForge
+// Prisma Schema for StudyForge - SQLite & Postgres Compatible
 
 generator client {
   provider = "prisma-client-js"
@@ -10,90 +10,119 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
+  id            String         @id @default(cuid())
   email         String         @unique
   passwordHash  String
-  name          String
+  name          String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+
   documents     Document[]
   studySessions StudySession[]
-  userAnswers   UserAnswer[]
+  answers       UserAnswer[]
+
+  @@index([createdAt])
 }
 
 model Document {
-  id            String          @id @default(uuid())
+  id            String          @id @default(cuid())
   userId        String
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   filename      String
-  fileType      String
+  originalName  String          @default("")
+  mimeType      String          @default("application/octet-stream")
   fileSize      Int
   status        String          @default("UPLOADING") // UPLOADING, PROCESSING, READY, FAILED
   errorMessage  String?
   rawText       String?
   summary       String?
-  chunks        DocumentChunk[]
-  studySessions StudySession[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks        DocumentChunk[]
+  studySessions StudySession[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, createdAt])
 }
 
 model DocumentChunk {
-  id         String   @id @default(uuid())
+  id         String   @id @default(cuid())
   documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   chunkIndex Int
   content    String
-  charCount  Int
+  metadata   String?
+  charCount  Int      @default(0)
   createdAt  DateTime @default(now())
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
 }
 
 model StudySession {
-  id         String     @id @default(uuid())
-  userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documentId String
-  document   Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  title      String
-  topic      String
-  mode       String     // QUICK, DEEP, QUIZ
-  overview   String?
+  id                    String        @id @default(cuid())
+  userId                String
+  documentId            String
+  title                 String
+  topic                 String?
+  mode                  String        @default("DEEP") // QUICK, DEEP, QUIZ
+  status                String        @default("READY") // CREATED, GENERATING, READY, IN_PROGRESS, COMPLETED, FAILED
+  overview              String?
   simplifiedExplanation String?
-  keyConcepts String?   // Stored as JSON array string
-  summary    String?
-  status     String     @default("ACTIVE") // ACTIVE, COMPLETED
-  questions  Question[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  keyConcepts           String?       // JSON array of strings
+  summary               String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document              Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  questions             Question[]
+
+  @@index([userId])
+  @@index([documentId])
+  @@index([userId, createdAt])
 }
 
 model Question {
-  id                     String       @id @default(uuid())
-  sessionId              String
-  session                StudySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  bloomLevel             String       // REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE
-  questionType           String       // MULTIPLE_CHOICE, SHORT_ANSWER, SCENARIO, COMPARISON, TROUBLESHOOTING, JUSTIFICATION
-  content                String
-  options                String?      // Stored as JSON array of strings for MCQ
-  expectedAnswer         String
-  explanation            String
-  sourceChunkReferences  String?      // Stored as JSON array string e.g. ["Chunk 1", "Chunk 3"]
-  order                  Int          @default(0)
-  answers                UserAnswer[]
-  createdAt              DateTime     @default(now())
+  id               String       @id @default(cuid())
+  sessionId        String
+  bloomLevel       String       @default("REMEMBER") // REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE
+  questionType     String       @default("SHORT_ANSWER") // MULTIPLE_CHOICE, SHORT_ANSWER, SCENARIO, COMPARISON, TROUBLESHOOTING, JUSTIFICATION
+  content          String
+  options          String?      // JSON array of strings for MULTIPLE_CHOICE
+  expectedAnswer   String?
+  explanation      String?
+  sourceReferences String?      // JSON array of chunk references
+  orderIndex       Int          @default(0)
+  createdAt        DateTime     @default(now())
+
+  session          StudySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  answers          UserAnswer[]
+
+  @@unique([sessionId, orderIndex])
+  @@index([sessionId])
 }
 
 model UserAnswer {
-  id              String   @id @default(uuid())
+  id              String   @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   questionId      String
-  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   userResponse    String
   isCorrect       Boolean  @default(false)
-  score           Float    @default(0.0) // 0 - 100
-  correctConcepts String?  // Stored as JSON array string
-  missingConcepts String?  // Stored as JSON array string
-  feedback        String
+  score           Float?   @default(0.0) // 0 - 100
+  correctConcepts String?  // JSON array
+  missingConcepts String?  // JSON array
+  feedback        String?
   createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([questionId])
+  @@index([userId, questionId])
 }

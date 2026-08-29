@@ -122,23 +122,23 @@ export async function POST(req: Request) {
         simplifiedExplanation: generated.simplifiedExplanation,
         keyConcepts: JSON.stringify(generated.keyConcepts || []),
         summary: generated.summary,
-        status: 'ACTIVE',
+        status: 'READY',
         questions: {
           create: generated.questions.map((q, idx) => ({
-            bloomLevel: q.bloomLevel || 'REMEMBER',
-            questionType: q.questionType || 'SHORT_ANSWER',
+            bloomLevel: (q.bloomLevel || 'REMEMBER') as any,
+            questionType: (q.questionType || 'SHORT_ANSWER') as any,
             content: q.content,
             options: q.options ? JSON.stringify(q.options) : null,
             expectedAnswer: q.expectedAnswer,
             explanation: q.explanation,
-            sourceChunkReferences: JSON.stringify(q.sourceChunkReferences || [`Chunk 0`]),
-            order: idx,
+            sourceReferences: JSON.stringify(q.sourceChunkReferences || [`Chunk 0`]),
+            orderIndex: idx,
           })),
         },
       },
       include: {
         questions: {
-          orderBy: { order: 'asc' },
+          orderBy: { orderIndex: 'asc' },
         },
       },
     });

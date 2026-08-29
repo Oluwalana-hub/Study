@@ -18,7 +18,8 @@ export async function GET() {
       select: {
         id: true,
         filename: true,
-        fileType: true,
+        originalName: true,
+        mimeType: true,
         fileSize: true,
         status: true,
         errorMessage: true,
@@ -76,7 +77,8 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         filename,
-        fileType: ext,
+        originalName: filename,
+        mimeType: ext,
         fileSize,
         status: 'UPLOADING',
       },

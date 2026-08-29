@@ -10,9 +10,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Please provide a valid email address.' }, { status: 400 });
     }
 
-    if (!password || typeof password !== 'string' || password.length < 6) {
+    // Password must preserve exact character sequence and case (min 8 chars as per security rules)
+    if (!password || typeof password !== 'string' || password.length < 8) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters long.' },
+        { error: 'Password must be at least 8 characters long.' },
         { status: 400 }
       );
     }
@@ -21,8 +22,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Please provide your name.' }, { status: 400 });
     }
 
+    // Email uniqueness is case-insensitive (normalized via lowercasing and trimming)
+    const normalizedEmail = email.trim().toLowerCase();
+
     const existingUser = await db.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -32,25 +36,30 @@ export async function POST(req: Request) {
       );
     }
 
+    // Pass original, un-modified password string to bcrypt hash
     const passwordHash = await hashPassword(password);
+
     const user = await db.user.create({
       data: {
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         name: name.trim(),
         passwordHash,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
       },
     });
 
     await createSessionCookie({
       userId: user.id,
       email: user.email,
-      name: user.name,
+      name: user.name || '',
     });
 
-    return NextResponse.json(
-      { user: { id: user.id, email: user.email, name: user.name } },
-      { status: 201 }
-    );
+    return NextResponse.json({ user }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Registration error';
     return NextResponse.json({ error: `Failed to register user: ${msg}` }, { status: 500 });

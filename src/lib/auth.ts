@@ -10,7 +10,7 @@ const COOKIE_NAME = 'studyforge_session';
 export interface UserPayload {
   userId: string;
   email: string;
-  name: string;
+  name: string | null;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -38,7 +38,7 @@ export async function verifyJWT(token: string): Promise<UserPayload | null> {
   }
 }
 
-export async function getCurrentUser(): Promise<{ id: string; email: string; name: string } | null> {
+export async function getCurrentUser(): Promise<{ id: string; email: string; name: string | null } | null> {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value;

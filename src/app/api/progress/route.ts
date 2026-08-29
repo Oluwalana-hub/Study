@@ -39,7 +39,7 @@ export async function GET() {
         };
       }
 
-      const totalScore = answersForLevel.reduce((acc, curr) => acc + curr.score, 0);
+      const totalScore = answersForLevel.reduce((acc, curr) => acc + (curr.score ?? 0), 0);
       const avg = Math.round(totalScore / attempts);
 
       let status = 'NEEDS_PRACTICE';
@@ -56,7 +56,7 @@ export async function GET() {
 
     const overallScore =
       userAnswers.length > 0
-        ? Math.round(userAnswers.reduce((acc, curr) => acc + curr.score, 0) / userAnswers.length)
+        ? Math.round(userAnswers.reduce((acc, curr) => acc + (curr.score ?? 0), 0) / userAnswers.length)
         : 0;
 
     return NextResponse.json({

@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 });
     }
 
-    // Ownership Verification
+    // Critical Ownership Verification (Section 21)
     if (question.session.userId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -53,8 +53,9 @@ export async function POST(req: Request) {
     if (question.questionType === 'MULTIPLE_CHOICE') {
       // Deterministic evaluation for MCQ
       const cleanUser = userResponse.trim().toLowerCase();
-      const cleanExpected = question.expectedAnswer.trim().toLowerCase();
-      const isCorrect = cleanUser === cleanExpected || cleanExpected.includes(cleanUser) || cleanUser.includes(cleanExpected);
+      const expectedAns = question.expectedAnswer || '';
+      const cleanExpected = expectedAns.trim().toLowerCase();
+      const isCorrect = cleanUser === cleanExpected || (cleanExpected.length > 0 && (cleanExpected.includes(cleanUser) || cleanUser.includes(cleanExpected)));
 
       evaluationResult = {
         isCorrect,
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
         missingConcepts: isCorrect ? [] : ['Selected incorrect distractor'],
         feedback: isCorrect
           ? 'Correct! Your answer aligns perfectly with your uploaded study document.'
-          : `Not quite. Grounded answer: "${question.expectedAnswer}". ${question.explanation}`,
+          : `Not quite. Grounded answer: "${expectedAns}". ${question.explanation || ''}`,
         suggestedImprovement: 'Review the explanation and source references for complete clarity.',
       };
     } else {
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
         questionText: question.content,
         bloomLevel: question.bloomLevel as any,
         questionType: question.questionType as any,
-        expectedAnswer: question.expectedAnswer,
+        expectedAnswer: question.expectedAnswer || '',
         userAnswer: userResponse,
         relevantChunks: chunkContents,
       });
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
       },
     });
 
-    // Deterministic Adaptivity Logic Rule (Requirement 16)
+    // Deterministic Adaptivity Logic Rule
     let adaptivityRecommendation = '';
     if (evaluationResult.score >= 80) {
       adaptivityRecommendation = 'Strong performance! You have mastered this concept level. Continue to the next Bloom level.';

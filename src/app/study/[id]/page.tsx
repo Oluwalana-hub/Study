@@ -29,10 +29,11 @@ interface QuestionItem {
   questionType: string;
   content: string;
   options?: string; // JSON string array
-  expectedAnswer: string;
-  explanation: string;
+  expectedAnswer?: string;
+  explanation?: string;
+  sourceReferences?: string; // JSON string array
   sourceChunkReferences?: string; // JSON string array
-  order: number;
+  orderIndex?: number;
   answers: {
     id: string;
     userResponse: string;
@@ -462,13 +463,13 @@ export default function StudySessionPage() {
                   </div>
 
                   {/* Chunk Citations Badge */}
-                  {currentQuestion.sourceChunkReferences && (
+                  {(currentQuestion.sourceReferences || currentQuestion.sourceChunkReferences) && (
                     <div
                       className="text-[11px] font-semibold text-slate-500 bg-slate-50 dark:bg-slate-800 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700"
                       title="Grounding Source Reference"
                     >
                       Source:{' '}
-                      {parseJsonArray(currentQuestion.sourceChunkReferences).join(', ')}
+                      {parseJsonArray(currentQuestion.sourceReferences || currentQuestion.sourceChunkReferences).join(', ')}
                     </div>
                   )}
                 </div>

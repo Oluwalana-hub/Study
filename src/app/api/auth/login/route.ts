@@ -6,15 +6,18 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
-    if (!email || !password) {
+    if (!email || !password || typeof password !== 'string') {
       return NextResponse.json(
         { error: 'Email and password are required.' },
         { status: 400 }
       );
     }
 
+    // Email is case-insensitive normalized
+    const normalizedEmail = email.trim().toLowerCase();
+
     const user = await db.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
@@ -24,6 +27,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // Verify exact case-sensitive password string against bcrypt hash
     const isValid = await verifyPassword(password, user.passwordHash);
     if (!isValid) {
       return NextResponse.json(
@@ -35,7 +39,7 @@ export async function POST(req: Request) {
     await createSessionCookie({
       userId: user.id,
       email: user.email,
-      name: user.name,
+      name: user.name || '',
     });
 
     return NextResponse.json({

@@ -18,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           select: { id: true, filename: true, summary: true },
         },
         questions: {
-          orderBy: { order: 'asc' },
+          orderBy: { orderIndex: 'asc' },
           include: {
             answers: {
               where: { userId: user.id },
