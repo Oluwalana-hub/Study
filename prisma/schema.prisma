@@ -1,0 +1,99 @@
+// Prisma Schema for StudyForge
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  documents     Document[]
+  studySessions StudySession[]
+  userAnswers   UserAnswer[]
+}
+
+model Document {
+  id            String          @id @default(uuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename      String
+  fileType      String
+  fileSize      Int
+  status        String          @default("UPLOADING") // UPLOADING, PROCESSING, READY, FAILED
+  errorMessage  String?
+  rawText       String?
+  summary       String?
+  chunks        DocumentChunk[]
+  studySessions StudySession[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model DocumentChunk {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chunkIndex Int
+  content    String
+  charCount  Int
+  createdAt  DateTime @default(now())
+}
+
+model StudySession {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId String
+  document   Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  title      String
+  topic      String
+  mode       String     // QUICK, DEEP, QUIZ
+  overview   String?
+  simplifiedExplanation String?
+  keyConcepts String?   // Stored as JSON array string
+  summary    String?
+  status     String     @default("ACTIVE") // ACTIVE, COMPLETED
+  questions  Question[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Question {
+  id                     String       @id @default(uuid())
+  sessionId              String
+  session                StudySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  bloomLevel             String       // REMEMBER, UNDERSTAND, APPLY, ANALYZE, EVALUATE
+  questionType           String       // MULTIPLE_CHOICE, SHORT_ANSWER, SCENARIO, COMPARISON, TROUBLESHOOTING, JUSTIFICATION
+  content                String
+  options                String?      // Stored as JSON array of strings for MCQ
+  expectedAnswer         String
+  explanation            String
+  sourceChunkReferences  String?      // Stored as JSON array string e.g. ["Chunk 1", "Chunk 3"]
+  order                  Int          @default(0)
+  answers                UserAnswer[]
+  createdAt              DateTime     @default(now())
+}
+
+model UserAnswer {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId      String
+  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  userResponse    String
+  isCorrect       Boolean  @default(false)
+  score           Float    @default(0.0) // 0 - 100
+  correctConcepts String?  // Stored as JSON array string
+  missingConcepts String?  // Stored as JSON array string
+  feedback        String
+  createdAt       DateTime @default(now())
+}
