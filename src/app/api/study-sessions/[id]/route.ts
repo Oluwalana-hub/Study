@@ -1,5 +1,5 @@
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { StudySessionService } from '@/services/study-session.service';
 import { NextResponse } from 'next/server';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,36 +10,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const { id } = await params;
+    const result = await StudySessionService.getSessionById(id, user.id);
 
-    const session = await db.studySession.findUnique({
-      where: { id },
-      include: {
-        document: {
-          select: { id: true, filename: true, summary: true },
-        },
-        questions: {
-          orderBy: { orderIndex: 'asc' },
-          include: {
-            answers: {
-              where: { userId: user.id },
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-            },
-          },
-        },
-      },
-    });
-
-    if (!session) {
+    if (!result.found || !result.session) {
       return NextResponse.json({ error: 'Study session not found' }, { status: 404 });
     }
 
-    // Strict Ownership Check
-    if (session.userId !== user.id) {
+    if (!result.isAuthorized) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json({ session });
+    return NextResponse.json({ session: result.session });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error retrieving study session';
     return NextResponse.json({ error: msg }, { status: 500 });

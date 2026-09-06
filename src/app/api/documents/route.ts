@@ -1,8 +1,8 @@
 import { getAIService } from '@/lib/ai';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
 import { processDocumentBuffer, validateFile } from '@/lib/document-processor';
 import { checkRateLimit } from '@/lib/rate-limiter';
+import { DocumentService } from '@/services/document.service';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -12,25 +12,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const documents = await db.document.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        filename: true,
-        originalName: true,
-        mimeType: true,
-        fileSize: true,
-        status: true,
-        errorMessage: true,
-        summary: true,
-        createdAt: true,
-        _count: {
-          select: { chunks: true, studySessions: true },
-        },
-      },
-    });
-
+    const documents = await DocumentService.listUserDocuments(user.id);
     return NextResponse.json({ documents });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to list documents';
@@ -73,22 +55,16 @@ export async function POST(req: Request) {
     const ext = filename.split('.').pop()?.toLowerCase() || 'txt';
 
     // Step 1: Create Document in UPLOADING state
-    const document = await db.document.create({
-      data: {
-        userId: user.id,
-        filename,
-        originalName: filename,
-        mimeType: ext,
-        fileSize,
-        status: 'UPLOADING',
-      },
+    const document = await DocumentService.createPendingDocument({
+      userId: user.id,
+      filename,
+      originalName: filename,
+      mimeType: ext,
+      fileSize,
     });
 
     // Step 2: Transition to PROCESSING
-    await db.document.update({
-      where: { id: document.id },
-      data: { status: 'PROCESSING' },
-    });
+    await DocumentService.updateStatus(document.id, 'PROCESSING');
 
     // Step 3: Extract and Clean Text
     const arrayBuffer = await file.arrayBuffer();
@@ -96,13 +72,11 @@ export async function POST(req: Request) {
     const result = await processDocumentBuffer(buffer, filename);
 
     if (!result.success || !result.chunks || !result.rawText) {
-      await db.document.update({
-        where: { id: document.id },
-        data: {
-          status: 'FAILED',
-          errorMessage: result.error || 'Failed to extract content from document',
-        },
-      });
+      await DocumentService.updateStatus(
+        document.id,
+        'FAILED',
+        result.error || 'Failed to extract content from document'
+      );
       return NextResponse.json(
         { error: result.error || 'Document processing failed' },
         { status: 422 }
@@ -110,14 +84,14 @@ export async function POST(req: Request) {
     }
 
     // Step 4: Save Document Chunks in DB
-    await db.documentChunk.createMany({
-      data: result.chunks.map((c) => ({
-        documentId: document.id,
+    await DocumentService.saveChunks(
+      document.id,
+      result.chunks.map((c) => ({
         chunkIndex: c.chunkIndex,
         content: c.content,
         charCount: c.charCount,
-      })),
-    });
+      }))
+    );
 
     // Step 5: Generate AI Summary
     let summaryText = '';
@@ -128,20 +102,8 @@ export async function POST(req: Request) {
       summaryText = `Study material for ${filename} containing ${result.chunks.length} extracted chunks.`;
     }
 
-    // Step 6: Update Document State to READY
-    const readyDoc = await db.document.update({
-      where: { id: document.id },
-      data: {
-        status: 'READY',
-        rawText: result.rawText.slice(0, 50000), // Cap raw text for DB safety
-        summary: summaryText,
-      },
-      include: {
-        chunks: {
-          select: { id: true, chunkIndex: true, charCount: true },
-        },
-      },
-    });
+    // Step 6: Finalize Document State to READY
+    const readyDoc = await DocumentService.finalizeReady(document.id, result.rawText, summaryText);
 
     return NextResponse.json({ document: readyDoc }, { status: 201 });
   } catch (err: unknown) {

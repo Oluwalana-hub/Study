@@ -1,49 +1,35 @@
-import { createSessionCookie, verifyPassword } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSessionCookie } from '@/lib/auth';
+import { validateLoginInput } from '@/lib/validations';
+import { UserService } from '@/services/user.service';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const validation = validateLoginInput(body);
 
-    if (!email || !password || typeof password !== 'string') {
-      return NextResponse.json(
-        { error: 'Email and password are required.' },
-        { status: 400 }
-      );
+    if (!validation.isValid || !validation.data) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Email is case-insensitive normalized
-    const normalizedEmail = email.trim().toLowerCase();
+    const { email, password } = validation.data;
+    const authResult = await UserService.authenticate(email, password);
 
-    const user = await db.user.findUnique({
-      where: { email: normalizedEmail },
-    });
-
-    if (!user) {
+    if (!authResult.success || !authResult.user) {
       return NextResponse.json(
-        { error: 'Invalid email or password.' },
-        { status: 401 }
-      );
-    }
-
-    // Verify exact case-sensitive password string against bcrypt hash
-    const isValid = await verifyPassword(password, user.passwordHash);
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid email or password.' },
+        { error: authResult.error || 'Invalid email or password.' },
         { status: 401 }
       );
     }
 
     await createSessionCookie({
-      userId: user.id,
-      email: user.email,
-      name: user.name || '',
+      userId: authResult.user.id,
+      email: authResult.user.email,
+      name: authResult.user.name || '',
     });
 
     return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name },
+      user: authResult.user,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Login error';
