@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { getAIService } from '@/lib/ai';
+import type { BloomLevel, QuestionType } from '@/lib/ai/types';
 
 export interface EvaluateAnswerResult {
   isCorrect: boolean;
@@ -66,8 +67,8 @@ export class AnswerService {
 
       evaluationResult = await service.evaluateAnswer({
         questionText: question.content,
-        bloomLevel: question.bloomLevel as any,
-        questionType: question.questionType as any,
+        bloomLevel: question.bloomLevel as BloomLevel,
+        questionType: question.questionType as QuestionType,
         expectedAnswer: question.expectedAnswer || '',
         userAnswer: userResponse,
         relevantChunks: chunkContents,

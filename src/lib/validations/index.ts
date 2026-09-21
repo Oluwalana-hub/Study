@@ -26,8 +26,9 @@ export interface SubmitAnswerInput {
   userResponse: string;
 }
 
-export function validateRegisterInput(input: any): ValidationResult<RegisterInput> {
-  const { email, password, name } = input || {};
+export function validateRegisterInput(input: unknown): ValidationResult<RegisterInput> {
+  const record = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const { email, password, name } = record;
 
   if (!email || typeof email !== 'string' || !email.includes('@') || !email.includes('.')) {
     return { isValid: false, error: 'Please provide a valid email address.' };
@@ -51,8 +52,9 @@ export function validateRegisterInput(input: any): ValidationResult<RegisterInpu
   };
 }
 
-export function validateLoginInput(input: any): ValidationResult<LoginInput> {
-  const { email, password } = input || {};
+export function validateLoginInput(input: unknown): ValidationResult<LoginInput> {
+  const record = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const { email, password } = record;
 
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return { isValid: false, error: 'Please provide a valid email address.' };
@@ -71,15 +73,18 @@ export function validateLoginInput(input: any): ValidationResult<LoginInput> {
   };
 }
 
-export function validateCreateStudySessionInput(input: any): ValidationResult<CreateStudySessionInput> {
-  const { documentId, topic, mode } = input || {};
+export function validateCreateStudySessionInput(input: unknown): ValidationResult<CreateStudySessionInput> {
+  const record = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const { documentId, topic, mode } = record;
 
   if (!documentId || typeof documentId !== 'string' || documentId.trim().length === 0) {
     return { isValid: false, error: 'Document ID is required.' };
   }
 
   const validModes = ['QUICK', 'DEEP', 'QUIZ'] as const;
-  const sanitizedMode = validModes.includes(mode) ? mode : 'DEEP';
+  const sanitizedMode = typeof mode === 'string' && (validModes as readonly string[]).includes(mode)
+    ? (mode as 'QUICK' | 'DEEP' | 'QUIZ')
+    : 'DEEP';
 
   return {
     isValid: true,
@@ -91,8 +96,9 @@ export function validateCreateStudySessionInput(input: any): ValidationResult<Cr
   };
 }
 
-export function validateSubmitAnswerInput(input: any): ValidationResult<SubmitAnswerInput> {
-  const { questionId, userResponse } = input || {};
+export function validateSubmitAnswerInput(input: unknown): ValidationResult<SubmitAnswerInput> {
+  const record = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const { questionId, userResponse } = record;
 
   if (!questionId || typeof questionId !== 'string' || questionId.trim().length === 0) {
     return { isValid: false, error: 'Question ID is required.' };

@@ -1,4 +1,4 @@
-import { StudyMode } from './types';
+import type { StudyMode } from './types';
 
 export const SYSTEM_PROMPT_SECURITY_HEADER = `
 === SYSTEM DIRECTIVE & SECURITY PROTOCOL ===

@@ -2,7 +2,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { StudySessionService } from '@/services/study-session.service';
 import { NextResponse } from 'next/server';
 
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) {

@@ -81,6 +81,7 @@ export default function CreateSessionModal({
       <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden space-y-6 p-6 sm:p-8 relative">
         <button
           onClick={onClose}
+          aria-label="Close modal"
           className="absolute top-6 right-6 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
           <X className="w-5 h-5" />

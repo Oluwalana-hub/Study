@@ -368,6 +368,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => handleDeleteDocument(doc.id, doc.filename)}
                     title="Delete document"
+                    aria-label="Delete document"
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />

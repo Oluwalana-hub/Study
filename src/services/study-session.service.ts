@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { getAIService, StudyMode } from '@/lib/ai';
+import { getAIService, type StudyMode } from '@/lib/ai';
 
 export interface CreateSessionOptions {
   userId: string;
